@@ -2,16 +2,24 @@
   "name": "myownsocialmedia",
   "version": "1.0.0",
   "description": "I am going to develop the Full Stack Social Media App",
-  "type": "module", 
-  "main": "index.js", 
+  "type": "module",
+  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
   },
   "keywords": [
     "backend",
     "node.js"
   ],
   "author": "Syed Faiz Ahmed",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.0.1",
+    "express": "^5.1.0",
+    "mongoose": "^8.16.1"
+  }
 }
-// for using module.js not common.js
