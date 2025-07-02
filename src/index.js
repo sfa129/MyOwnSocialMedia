@@ -1,5 +1,6 @@
 import connectDB from "./db/index.js";
 import dotenv from 'dotenv';
+import { app } from "./app.js";
 
 dotenv.config(
     {
@@ -7,7 +8,20 @@ dotenv.config(
     }
 )
 
+//When async / await method completes, it provides a promise, so we will use .then, .catch after calling the connectDB();
 connectDB()
+.then( () => {
+    app.on("Error", (error) => {
+        console.log("Error Found: ", error)
+    })
+
+    app.listen(process.env.PORT || 8000, () => {
+        console.log(`server is running at port: ${process.env.PORT}`)
+    })
+} )
+.catch( (err) => {
+    console.error("MongoDB Connection Failed: ", err)
+} )
 
 
 
