@@ -1,6 +1,7 @@
 import express, { urlencoded } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import {upload} from './middlewares/multer.middleware.js'
 
 const app = express();
 
@@ -26,6 +27,17 @@ app.use(cookieParser());
 import userRouter from './routes/user.routes.js';
 
 //routes declaration
-app.use('/api/v1/users', userRouter)
+app.use('/api/v1/users',
+    upload.fields([
+        {
+            name: "avatar",
+            maxCount: 1
+        },
+        {
+            name: "coverImage",
+            maxCount: 1
+        }
+    ]),
+    userRouter)
 
 export { app }
