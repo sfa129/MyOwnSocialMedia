@@ -26,7 +26,12 @@ const registerUser = asyncHandler(async (req, res) => {
     //check for images / check for avatar, it means that it upload by user or not
     //middleware also give us "file" access in req 
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path; //if you not provide coverImage, it gives an error
+
+    let coverImageLocalPath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+            coverImageLocalPath = req.files.coverImage[0].path;
+    }
 
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar File is required")
