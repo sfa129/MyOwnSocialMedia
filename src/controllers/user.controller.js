@@ -4,6 +4,16 @@ import { User } from '../models/user.models.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 
+const generateAccessAndRefreshTokens = async (userId) => {
+    try {
+        const user = User.findById(userId);
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken(); 
+    } catch (error) {
+        throw new ApiError(500, "something went wrong while generating access and refresh token");
+    }
+}
+
 const registerUser = asyncHandler(async (req, res) => {
     //get user details
     const { fullName, email, username, password } = req.body
@@ -72,4 +82,30 @@ const registerUser = asyncHandler(async (req, res) => {
     )
 });
 
-export { registerUser };
+const loginUser = asyncHandler( async (req, res) => {
+
+    //first we get user data 
+    const {username, email, password} = req.body;
+
+    if(!email || !username) {
+        throw new ApiError(400, "username or password is required")
+    };
+
+    //check user exist or not of this username or password
+    const user = User.findOne({
+        $or: [{username}, {email}]
+    });
+
+    if(!user) {
+        throw new ApiError(404, "User does not exist")
+    };
+
+    //check Is password correct or not?
+    const isPasswordValid = await user.isPasswordCorrect(password);
+
+    if(!isPasswordValid) {
+        throw new ApiError(401, "Invalid user credentials")
+    } 
+} )
+
+export { registerUser, loginUser };
