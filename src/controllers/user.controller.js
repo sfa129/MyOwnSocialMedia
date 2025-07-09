@@ -6,12 +6,12 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 
 //method to generate tokens
 const generateAccessAndRefreshTokens = async (userId) => {
-    const user =User.findById(userId); //find user in db by id
+    const user = User.findById(userId); //find user in db by id
     const accessToken = user.generateAccessToken(); //generate access token
     const refreshToken = user.generateRefreshToken(); // generate refresh token
 
     user.refreshToken = refreshToken;  //save token into db
-    await user.save({validateBeforeSave: false}); //avoid the validation 
+    await user.save({ validateBeforeSave: false }); //avoid the validation 
 
     return { accessToken, refreshToken }
 
@@ -23,7 +23,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // console.log("email", email)
 
     //validate user details
-    if ([fullName, email, username, password].some((field) => field?.trim() === "" )) {
+    if ([fullName, email, username, password].some((field) => field?.trim() === "")) {
         throw new ApiError(400, "All fields are required");
     }
 
@@ -43,7 +43,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
     let coverImageLocalPath;
     if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
-            coverImageLocalPath = req.files.coverImage[0].path;
+        coverImageLocalPath = req.files.coverImage[0].path;
     }
 
     if (!avatarLocalPath) {
@@ -54,7 +54,7 @@ const registerUser = asyncHandler(async (req, res) => {
     const avatar = await uploadOnCloudinary(avatarLocalPath);
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-    if(!avatar) {
+    if (!avatar) {
         throw new ApiError(400, "Avatar File is required")
     }
 
@@ -75,7 +75,7 @@ const registerUser = asyncHandler(async (req, res) => {
         "-password -refreshToken"
     );
 
-    if(!createdUser) {
+    if (!createdUser) {
         throw new ApiError(500, "Something went wrong while registering the user!")
     }
 
@@ -85,33 +85,33 @@ const registerUser = asyncHandler(async (req, res) => {
     )
 });
 
-const loginUser = asyncHandler( async (req, res) => {
+const loginUser = asyncHandler(async (req, res) => {
 
     //first we get user data 
-    const {username, email, password} = req.body;
+    const { username, email, password } = req.body;
 
-    if(!email || !username) {
+    if (!email || !username) {
         throw new ApiError(400, "username or password is required")
     };
 
     //check user exist or not of this username or password
     const user = User.findOne({
-        $or: [{username}, {email}]
+        $or: [{ username }, { email }]
     });
 
-    if(!user) {
+    if (!user) {
         throw new ApiError(404, "User does not exist")
     };
 
     //check Is password correct or not?
     const isPasswordValid = await user.isPasswordCorrect(password);
 
-    if(!isPasswordValid) {
+    if (!isPasswordValid) {
         throw new ApiError(401, "Invalid user credentials")
     };
-    
+
     //taken tokens from above method (we make) i.e.generateAccessAndRefreshTokens
-    const {accessToken, refreshToken} = generateAccessAndRefreshTokens(user._id);
+    const { accessToken, refreshToken } = generateAccessAndRefreshTokens(user._id);
 
     //taken user data from db except password and refresh token
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
@@ -125,18 +125,44 @@ const loginUser = asyncHandler( async (req, res) => {
 
     //return the response
     return res
-    .status(200)
-    .cookie("refreshToken", refreshToken, options)
-    .cookie("accessToken", accessToken, options)
-    .json(
-        new ApiResponse(
-            200, 
-        {
-            user: loggedInUser, accessToken, refreshToken //not good practice but it enable the user to save these on frontend    
-        },
-        "User logged in successfully    "
+        .status(200)
+        .cookie("refreshToken", refreshToken, options)
+        .cookie("accessToken", accessToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedInUser, accessToken, refreshToken //not good practice but it enable the user to save these on frontend    
+                },
+                "User logged in successfully    "
+            )
         )
-    )
-} )
+});
 
-export { registerUser, loginUser };
+const logoutUser = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        },
+        {
+            new: true
+        }
+    );
+
+    //take options here
+    const options = {
+        httpOnly: true,
+        secure: true
+    };
+
+    return res
+        .status(200)
+        .clearCookie(accessToken, options)
+        .clearCookie(refreshToken, options)
+        .json(new ApiResponse(200, {}, "user logged successfully"))
+})
+
+export { registerUser, loginUser, logoutUser };
