@@ -4,14 +4,17 @@ import { User } from '../models/user.models.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 
+//method to generate tokens
 const generateAccessAndRefreshTokens = async (userId) => {
-    try {
-        const user = User.findById(userId);
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken(); 
-    } catch (error) {
-        throw new ApiError(500, "something went wrong while generating access and refresh token");
-    }
+    const user =User.findById(userId); //find user in db by id
+    const accessToken = user.generateAccessToken(); //generate access token
+    const refreshToken = user.generateRefreshToken(); // generate refresh token
+
+    user.refreshToken = refreshToken;  //save token into db
+    await user.save({validateBeforeSave: false}); //avoid the validation 
+
+    return { accessToken, refreshToken }
+
 }
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -105,7 +108,35 @@ const loginUser = asyncHandler( async (req, res) => {
 
     if(!isPasswordValid) {
         throw new ApiError(401, "Invalid user credentials")
-    } 
+    };
+    
+    //taken tokens from above method (we make) i.e.generateAccessAndRefreshTokens
+    const {accessToken, refreshToken} = generateAccessAndRefreshTokens(user._id);
+
+    //taken user data from db except password and refresh token
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+    //make cookie secure - by default cookies are modifiable by 
+    //frontend but after these options it can be done by server only
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    //return the response
+    return res
+    .status(200)
+    .cookie("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, options)
+    .json(
+        new ApiResponse(
+            200, 
+        {
+            user: loggedInUser, accessToken, refreshToken //not good practice but it enable the user to save these on frontend    
+        },
+        "User logged in successfully    "
+        )
+    )
 } )
 
 export { registerUser, loginUser };
