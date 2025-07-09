@@ -3,10 +3,12 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { User } from '../models/user.models.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
+import jwt from "jsonwebtoken"
+import mongoose from "mongoose";
 
 //method to generate tokens
 const generateAccessAndRefreshTokens = async (userId) => {
-    const user = User.findById(userId); //find user in db by id
+    const user = await User.findById(userId); //find user in db by id
     const accessToken = user.generateAccessToken(); //generate access token
     const refreshToken = user.generateRefreshToken(); // generate refresh token
 
@@ -90,20 +92,21 @@ const loginUser = asyncHandler(async (req, res) => {
     //first we get user data 
     const { username, email, password } = req.body;
 
-    if (!(email || username)) {
+    if (!email && !username) {
         throw new ApiError(400, "username or password is required")
     };
 
     //check user exist or not of this username or password
-    const user = User.findOne({
+    const user = await User.findOne({
         $or: [{ username }, { email }]
     });
 
     if (!user) {
         throw new ApiError(404, "User does not exist")
     };
-
     //check Is password correct or not?
+    // const password = String(req.body.password || "").trim();
+
     const isPasswordValid = await user.isPasswordCorrect(password);
 
     if (!isPasswordValid) {
@@ -111,7 +114,7 @@ const loginUser = asyncHandler(async (req, res) => {
     };
 
     //taken tokens from above method (we make) i.e.generateAccessAndRefreshTokens
-    const { accessToken, refreshToken } = generateAccessAndRefreshTokens(user._id);
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
 
     //taken user data from db except password and refresh token
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken");

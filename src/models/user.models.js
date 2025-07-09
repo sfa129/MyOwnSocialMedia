@@ -1,5 +1,6 @@
 import mongoose, {Schema} from 'mongoose';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken'
 
 
 const userSchema = new mongoose.Schema(
@@ -62,9 +63,13 @@ userSchema.pre("save", async function(next){
     next();
 })
 
-//inect the method into Schema i.e. "isPasswordCorrect"
+//inject the method into Schema i.e. "isPasswordCorrect"
 //check password correct or not by comparing - use compare method of bcrypt
 userSchema.methods.isPasswordCorrect = async function(password) {
+    if (!password || typeof password !== "string") {
+        throw new Error("Invalid password input.");
+    }
+
     return await bcrypt.compare(password, this.password) //return true or false
 }
 
