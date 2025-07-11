@@ -4,7 +4,6 @@ import { User } from '../models/user.models.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import jwt from "jsonwebtoken"
-import mongoose from "mongoose";
 
 //method to generate tokens
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -218,6 +217,30 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 
 
+})
+
+const changePassword = asyncHandler(async(req, res) => {
+    //take old and new password from req.body
+    const {oldPassword, newPassword} = req.body;
+
+    //check oldPassword is correct or not
+    const isPasswordCorrect = await isPasswordCorrect(oldPassword); //return true or false
+
+    if(!isPasswordCorrect) {
+        throw new ApiError(401, "oldpassword is incorrect");
+    };
+
+    //make db call to collect user data || here "user" is the object which is injected by us in middleware
+    const user = await User.findById(req.user?.id);
+
+    //set new password
+    user.password = newPassword;
+    await user.save({validateBeforeSave: false});
+
+    //send response
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "password changed successfully"))
 })
 
 export { registerUser, loginUser, logoutUser, refreshAccessToken };
