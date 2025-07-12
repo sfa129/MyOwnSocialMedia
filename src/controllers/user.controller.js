@@ -219,28 +219,133 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 })
 
-const changePassword = asyncHandler(async(req, res) => {
+const changePassword = asyncHandler(async (req, res) => {
     //take old and new password from req.body
-    const {oldPassword, newPassword} = req.body;
+    const { oldPassword, newPassword } = req.body;
 
     //check oldPassword is correct or not
     const isPasswordCorrect = await isPasswordCorrect(oldPassword); //return true or false
 
-    if(!isPasswordCorrect) {
+    if (!isPasswordCorrect) {
         throw new ApiError(401, "oldpassword is incorrect");
     };
 
     //make db call to collect user data || here "user" is the object which is injected by us in middleware
-    const user = await User.findById(req.user?.id);
+    const user = await User.findById(req.user?._id);
 
     //set new password
     user.password = newPassword;
-    await user.save({validateBeforeSave: false});
+    await user.save({ validateBeforeSave: false });
 
     //send response
     return res
-    .status(200)
-    .json(new ApiResponse(200, {}, "password changed successfully"))
+        .status(200)
+        .json(new ApiResponse(200, {}, "password changed successfully"))
 })
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(200, req.user, "current user fetched successfully")
+})
+
+//update the text data
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    //take user details from req.body
+    const { fullName, email } = req.body;
+
+    if (!fullName || !email) {
+        throw new ApiError(401, "All fields are required");
+    }
+
+    //make db call and update the details
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullName: fullName,
+                email: email
+            }
+        },
+        { new: true }
+    ).select("-password")
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Account details updated successfully"))
+})
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    //take new avatar from user || take path from middlware not directly from user
+    const avatarLocalPath = req.file?.path //use "file" because we update only single file
+
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar File not found")
+    };
+
+    //upload on cloudinary
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+    if (!avatar.url) {
+        throw new ApiError(400, "Error while uploading Avatar on Cloudinary")
+    }
+
+    //update the avatar url in db so make sb call for user data
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url //here only updates the url not the whole object
+            }
+        },
+        { new: true }
+    ).select("-passwor");
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "Avatar uploaded successfully"
+
+            ))
+})
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    const coverImageLocalPath = req.file?.path;
+
+    if (!coverImageLocalPath) {
+        throw new ApiError(400, "coverImage file not found");
+    };
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+
+    if (coverImage.url) {
+        throw new ApiError(400, "Error while coverImage uploading on Cloudinary");
+    };
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverImage: coverImage.url
+            }
+        },
+        { new: true }
+    ).select("-password");
+
+    res
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "Cover Image updated successfully"
+            ))
+})
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    changePassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage
+};
